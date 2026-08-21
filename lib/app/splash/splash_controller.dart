@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:komutan/data/services/auth_service.dart';
 import 'package:komutan/routes/routes.dart';
 
 class SplashController extends GetxController {
@@ -11,9 +12,7 @@ class SplashController extends GetxController {
   void _navigateNext() async {
     await Future.delayed(const Duration(seconds: 3));
 
-    // TODO: once real auth/session storage exists, check for a saved
-    // token here and route to Routes.bottom if the driver is already
-    // logged in. For now every launch goes through login -> OTP.
-    Get.offAllNamed(Routes.login);
+    final auth = Get.find<AuthService>();
+    Get.offAllNamed(auth.isLoggedIn ? Routes.bottom : Routes.login);
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:komutan/app/dashboard/bottom/navigation_controller.dart';
 import 'package:komutan/app/dashboard/home/home_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_controller.dart';
 import 'package:komutan/app/dashboard/trip/trip_detail_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_model.dart';
@@ -12,6 +14,8 @@ class DashboardView extends StatelessWidget {
   DashboardView({super.key});
 
   final DashboardController controller = Get.put(DashboardController());
+  final TripController tripController = Get.isRegistered<TripController>() ? Get.find<TripController>() : Get.put(TripController());
+  final NotificationController notificationController = Get.isRegistered<NotificationController>() ? Get.find<NotificationController>() : Get.put(NotificationController());
 
   @override
   Widget build(BuildContext context) {
@@ -36,28 +40,35 @@ class DashboardView extends StatelessWidget {
 
                       SizedBox(width: 10.w),
 
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Welcome", style: TextStyle(color: Colors.grey)),
-                          Text("Travis Barker", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text("Welcome", style: TextStyle(color: Colors.grey)),
+                          Text(controller.driverName, style: const TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ],
                   ),
 
-                  Stack(
-                    children: [
-                      const Icon(Icons.notifications_none, size: 28),
-                      Positioned(
-                        right: 0,
-                        child: Container(
-                          height: 8,
-                          width: 8,
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  GestureDetector(
+                    onTap: () => Get.to(() => const NotificationScreen()),
+                    child: Stack(
+                      children: [
+                        const Icon(Icons.notifications_none, size: 28),
+                        Obx(
+                          () => notificationController.unreadCount.value > 0
+                              ? Positioned(
+                                  right: 0,
+                                  child: Container(
+                                    height: 8,
+                                    width: 8,
+                                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -100,22 +111,24 @@ class DashboardView extends StatelessWidget {
               SizedBox(height: 20.h),
 
               /// STATS
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                childAspectRatio: 2.5,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  statCard("342", "TOTAL TRIPS", Image.asset("assets/icons/icon1.png")),
+              Obx(
+                () => GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  childAspectRatio: 2.5,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    statCard("${controller.stats.value.totalTrips}", "TOTAL TRIPS", Image.asset("assets/icons/icon1.png")),
 
-                  statCard("3", "COMPLETED", Image.asset("assets/icons/icon2.png")),
+                    statCard("${controller.stats.value.totalCompletedTrips}", "COMPLETED", Image.asset("assets/icons/icon2.png")),
 
-                  statCard("1", "IN TRANSIT", Image.asset("assets/icons/icon3.png")),
+                    statCard("${controller.stats.value.inTransit}", "IN TRANSIT", Image.asset("assets/icons/icon3.png")),
 
-                  statCard("4.8", "RATING", Image.asset("assets/icons/icon4.png")),
-                ],
+                    statCard("${controller.stats.value.rating}", "RATING", Image.asset("assets/icons/icon4.png")),
+                  ],
+                ),
               ),
 
               SizedBox(height: 20.h),
@@ -138,77 +151,97 @@ class DashboardView extends StatelessWidget {
 
               SizedBox(height: 10.h),
 
-              /// ACTIVE TRIP CARD
-              Container(
-                padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16.r),
-                  boxShadow: [BoxShadow(blurRadius: 10, offset: const Offset(0, 5), color: Colors.black.withOpacity(0.05))],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("TRP-20260501", style: TextStyle(color: Colors.grey)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-                          child: const Text("Assigned", style: TextStyle(color: AppColors.secondary, fontSize: 12)),
-                        ),
-                      ],
-                    ),
+              /// ACTIVE TRIP CARD (live — one assigned trip)
+              Obx(() {
+                if (tripController.isLoading.value && tripController.trips.isEmpty) {
+                  return Container(
+                    padding: EdgeInsets.all(24.r),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16.r)),
+                    child: const CircularProgressIndicator(),
+                  );
+                }
 
-                    // SizedBox(height: 2.h),
-                    const Text("Mehta Electronics Pvt Ltd", style: TextStyle(fontWeight: FontWeight.w400, fontSize: 14)),
+                final assignedTrips = tripController.trips.where((t) => t.status == TripStatus.assigned).toList();
+                final TripModel? activeTrip = assignedTrips.isNotEmpty ? assignedTrips.first : null;
 
-                    SizedBox(height: 12.h),
+                if (activeTrip == null) {
+                  return Container(
+                    padding: EdgeInsets.all(24.r),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16.r)),
+                    child: const Text("No assigned trips right now", style: TextStyle(color: Colors.grey)),
+                  );
+                }
 
-                    locationStep(title: "Pickup", mainText: "New York", subText: "123 Broadway, New York, NY 10001, USA", color: Colors.green),
+                return Container(
+                  padding: EdgeInsets.all(16.r),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.r),
+                    boxShadow: [BoxShadow(blurRadius: 10, offset: const Offset(0, 5), color: Colors.black.withOpacity(0.05))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(activeTrip.tripNo, style: const TextStyle(color: Colors.grey)),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                            child: const Text("Assigned", style: TextStyle(color: AppColors.secondary, fontSize: 12)),
+                          ),
+                        ],
+                      ),
 
-                    SizedBox(height: 12.h),
+                      Text(activeTrip.customerName, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 14)),
 
-                    locationStep(title: "Delivery", mainText: "New York", subText: "789 Madison Avenue, New York, NY 10065, USA", color: AppColors.primary, isLast: true),
+                      SizedBox(height: 12.h),
 
-                    SizedBox(height: 12.h),
+                      locationStep(title: "Pickup", mainText: activeTrip.pickupCity, subText: activeTrip.pickupAddress, color: Colors.green),
 
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(children: [Image.asset("assets/icons/Frame.png"), SizedBox(width: 4), Text("Electronic")]),
-                        Row(children: [Image.asset("assets/icons/Frame1.png"), SizedBox(width: 4), Text("12000 KG")]),
-                        Row(children: [Image.asset("assets/icons/Frame2.png"), SizedBox(width: 4), Text("May 5")]),
-                      ],
-                    ),
+                      SizedBox(height: 12.h),
 
-                    SizedBox(height: 15.h),
+                      locationStep(title: "Delivery", mainText: activeTrip.deliveryCity, subText: activeTrip.deliveryAddress, color: AppColors.primary, isLast: true),
 
-                    GestureDetector(
-                      onTap: () {
-                        final tripController = Get.isRegistered<TripController>() ? Get.find<TripController>() : Get.put(TripController());
-                        final TripModel activeTrip = tripController.trips.firstWhere((t) => t.status != TripStatus.delivered, orElse: () => tripController.trips.first);
-                        tripController.selectTrip(activeTrip);
-                        Get.to(() => const TripDetailScreen());
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: AppColors.primary),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "View Details",
-                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      SizedBox(height: 12.h),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(children: [Image.asset("assets/icons/Frame.png"), SizedBox(width: 4), Text(activeTrip.cargoType)]),
+                          Row(children: [Image.asset("assets/icons/Frame1.png"), SizedBox(width: 4), Text(activeTrip.weight)]),
+                          Row(children: [Image.asset("assets/icons/Frame2.png"), SizedBox(width: 4), Text(activeTrip.date)]),
+                        ],  
+                      ),
+
+                      SizedBox(height: 15.h),
+
+                      GestureDetector(
+                        onTap: () {
+                          tripController.selectTrip(activeTrip);
+                          Get.to(() => const TripDetailScreen());
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.primary),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            "View Details",
+                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    ],
+                  ),
+                );
+              }),
 
               SizedBox(height: 20.h),
             ],

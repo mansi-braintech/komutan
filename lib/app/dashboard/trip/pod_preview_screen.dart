@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:komutan/app/dashboard/notification/notification_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_controller.dart';
 import 'package:komutan/utils/app_colors.dart';
 import 'package:komutan/widgets/common_widgets.dart';
@@ -11,24 +15,30 @@ class PODPreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<TripController>();
     final trip = controller.selectedTrip.value!;
+    final notificationController = Get.isRegistered<NotificationController>() ? Get.find<NotificationController>() : Get.put(NotificationController());
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.white,
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios, size: 18), onPressed: () => Get.back()),
         title: const Text('Preview'),
         actions: [
           Stack(
             children: [
-              IconButton(icon: const Icon(Icons.notifications_none, size: 26), onPressed: () {}),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                ),
+              IconButton(icon: const Icon(Icons.notifications_none, size: 26), onPressed: () => Get.to(() => const NotificationScreen())),
+              Obx(
+                () => notificationController.unreadCount.value > 0
+                    ? Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -88,7 +98,11 @@ class PODPreviewScreen extends StatelessWidget {
                   title: 'Delivery Photos (${controller.deliveryPhotos.length})',
                   child: controller.deliveryPhotos.isEmpty
                       ? const Text('No photos captured', style: TextStyle(fontSize: 13, color: AppColors.secondary))
-                      : Wrap(spacing: 10, runSpacing: 10, children: List.generate(controller.deliveryPhotos.length, (index) => _PreviewPhoto(index: index))),
+                      : Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: controller.deliveryPhotos.map((path) => _PreviewPhoto(path: path)).toList(),
+                        ),
                 ),
               ),
 
@@ -101,10 +115,10 @@ class PODPreviewScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
                     child: Center(
-                      child: controller.hasSignature.value
-                          ? const Text(
-                              'Signature Captured',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
+                      child: controller.hasSignature.value && controller.signaturePath.value != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(File(controller.signaturePath.value!), height: 90, fit: BoxFit.contain),
                             )
                           : const Text('No Signature Captured', style: TextStyle(fontSize: 13, color: AppColors.secondary)),
                     ),
@@ -122,7 +136,18 @@ class PODPreviewScreen extends StatelessWidget {
             child: Container(
               color: AppColors.background,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-              child: PrimaryButton(label: 'Confirm & Submit POD', icon: Icons.check_circle_outline, onPressed: () => _showSuccessDialog(context, controller)),
+              child: Obx(
+                () => PrimaryButton(
+                  label: controller.isSubmittingPOD.value ? 'Submitting...' : 'Confirm & Submit POD',
+                  icon: Icons.check_circle_outline,
+                  onPressed: controller.isSubmittingPOD.value
+                      ? () {}
+                      : () async {
+                          final success = await controller.submitProofOfDelivery();
+                          if (success && context.mounted) _showSuccessDialog(context, controller);
+                        },
+                ),
+              ),
             ),
           ),
         ],
@@ -137,7 +162,7 @@ class PODPreviewScreen extends StatelessWidget {
       builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           decoration: BoxDecoration(color: Color(0xFF10B981), borderRadius: BorderRadius.circular(20)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -197,6 +222,7 @@ class PODPreviewScreen extends StatelessWidget {
                     controller.resetPOD();
                     Get.until((route) => route.isFirst);
                   },
+
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white, width: 1.5),
@@ -332,17 +358,14 @@ class _IconInfoRow extends StatelessWidget {
 }
 
 class _PreviewPhoto extends StatelessWidget {
-  final int index;
-  const _PreviewPhoto({required this.index});
+  final String path;
+  const _PreviewPhoto({required this.path});
 
   @override
   Widget build(BuildContext context) {
-    final colors = [const Color(0xFF78909C), const Color(0xFF8D6E63)];
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(color: colors[index % 2], borderRadius: BorderRadius.circular(8)),
-      child: Center(child: Icon(index == 0 ? Icons.handshake_outlined : Icons.inventory_2_outlined, color: Colors.white70, size: 32)),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.file(File(path), width: 80, height: 80, fit: BoxFit.cover),
     );
   }
 }

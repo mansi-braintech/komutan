@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:komutan/app/dashboard/document/document_model.dart';
 import 'package:komutan/app/dashboard/document/documents_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/utils/app_colors.dart';
 
 class DocumentsPage extends StatelessWidget {
   DocumentsPage({super.key});
 
   final DocumentsController controller = Get.put(DocumentsController());
+  final NotificationController notificationController = Get.isRegistered<NotificationController>() ? Get.find<NotificationController>() : Get.put(NotificationController());
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.white,
         leading: IconButton(
           icon: Container(
             width: 36,
@@ -32,35 +36,53 @@ class DocumentsPage extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(width: 38, height: 38, child: const Icon(Icons.notifications_none_rounded, color: AppColors.primary, size: 22)),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+            child: GestureDetector(
+              onTap: () => Get.to(() => const NotificationScreen()),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(width: 38, height: 38, child: const Icon(Icons.notifications_none_rounded, color: AppColors.primary, size: 22)),
+                  Obx(
+                    () => notificationController.unreadCount.value > 0
+                        ? Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
       ),
-      body: Obx(
-        () => ListView.separated(
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (controller.documents.isEmpty) {
+          return const Center(
+            child: Text('No documents found', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+          );
+        }
+
+        return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: controller.documents.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final doc = controller.documents[index];
+
             return _DocumentCard(doc: doc, onDownload: () => controller.downloadDocument(doc));
           },
-        ),
-      ),
+        );
+      }),
     );
   }
 }

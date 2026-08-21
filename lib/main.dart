@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:get/get_navigation/src/root/get_material_app.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:komutan/data/services/ApiService.dart';
+import 'package:komutan/data/services/auth_service.dart';
 import 'package:komutan/routes/app_pages.dart';
 import 'package:komutan/routes/routes.dart';
 
-void main() {
+// main.dart
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
+  Get.put(ApiService(), permanent: true);
+  Get.put(AuthService(), permanent: true);
   runApp(const MyApp());
 }
 

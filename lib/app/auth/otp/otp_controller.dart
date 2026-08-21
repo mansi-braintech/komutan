@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:komutan/data/services/ApiService.dart';
 
+import '../../../data/models/auth_response.dart';
+import '../../../data/services/auth_service.dart';
 import '../../../routes/routes.dart';
 
 class OtpController extends GetxController {
-  /// One controller/focus node per OTP digit box.
   final List<TextEditingController> otpControllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -12,15 +14,23 @@ class OtpController extends GetxController {
   final errorText = RxnString();
   final secondsRemaining = 30.obs;
 
+  final ApiService _api = Get.find<ApiService>();
+  final AuthService _auth = Get.find<AuthService>();
+
+  late String _driverRefId; // the `userId` value returned by /send
+  late String _phone;
+
   String get _otpCode => otpControllers.map((c) => c.text).join();
 
   @override
   void onInit() {
     super.onInit();
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    _driverRefId = args["id"] ?? '';
+    _phone = args["phone"] ?? '';
     _startResendTimer();
   }
 
-  /// Handles auto-advance / auto-back-focus as the driver types each digit.
   void onChanged(int index, String value) {
     if (errorText.value != null) errorText.value = null;
 
@@ -30,7 +40,6 @@ class OtpController extends GetxController {
       focusNodes[index - 1].requestFocus();
     }
 
-    // Auto-submit once all 6 digits are filled in.
     if (_otpCode.length == 6) {
       FocusManager.instance.primaryFocus?.unfocus();
       verifyOtp();
@@ -47,14 +56,19 @@ class OtpController extends GetxController {
 
     isLoading.value = true;
     try {
-      // API Call Here (verify code with backend)
-      await Future.delayed(const Duration(seconds: 1));
+      final response = await _api.verifyOtp(id: _driverRefId, otp: code);
 
-      // Clear the whole stack so the driver can't navigate "back" into
-      // login/OTP with the back button once they're inside the app.
-      Get.offAllNamed(Routes.bottom);
+      if (response.isOk && response.body?['success'] == true) {
+        final data = VerifyOtpResponse.fromJson(response.body);
+        print(response.body);
+        await _auth.saveSession(data);
+
+        Get.offAllNamed(Routes.bottom);
+      } else {
+        errorText.value = response.body?['message'] ?? 'Invalid OTP';
+      }
     } catch (e) {
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
     } finally {
       isLoading.value = false;
     }
@@ -71,7 +85,7 @@ class OtpController extends GetxController {
     });
   }
 
-  void resendOtp() {
+  Future<void> resendOtp() async {
     if (secondsRemaining.value > 0) return;
 
     for (final c in otpControllers) {
@@ -80,8 +94,20 @@ class OtpController extends GetxController {
     errorText.value = null;
     focusNodes.first.requestFocus();
 
-    // API Call Here (resend code)
-    Get.snackbar('OTP Sent', 'A new OTP has been sent to your phone', snackPosition: SnackPosition.BOTTOM);
+    try {
+      final response = await _api.sendOtp(_phone);
+      if (response.isOk && response.body?['success'] == true) {
+        final data = SendOtpResponse.fromJson(response.body);
+        print(response.body);
+        _driverRefId = data.userId; // /send issues a fresh id each time
+        Get.snackbar('OTP Sent', response.body['message'] ?? 'A new OTP has been sent to your phone', snackPosition: SnackPosition.TOP);
+      } else {
+        Get.snackbar('Error', response.body?['message'] ?? 'Failed to resend OTP', snackPosition: SnackPosition.TOP);
+      }
+    } catch (e) {
+      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+    }
+
     _startResendTimer();
   }
 

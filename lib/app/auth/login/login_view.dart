@@ -61,46 +61,28 @@ class LoginView extends StatelessWidget {
                           style: TextStyle(fontSize: 26.sp, fontWeight: FontWeight.bold, color: const Color(0xFF1C1C28)),
                         ),
 
-                        SizedBox(height: 6.h),
+                        SizedBox(height: 4.h),
 
                         Text(
                           "Login and enjoy quick delivery.",
                           style: TextStyle(fontSize: 14.sp, color: Colors.grey),
                         ),
 
-                        SizedBox(height: 20.h),
+                        SizedBox(height: 15.h),
 
                         Form(
                           key: controller.formKey,
                           child: Column(
                             children: [
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 14.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.phone, color: Colors.grey),
-
-                                    SizedBox(width: 10.w),
-
-                                    Expanded(
-                                      child: TextFormField(
-                                        controller: controller.phoneController,
-                                        keyboardType: TextInputType.phone,
-                                        maxLength: 10,
-                                        validator: controller.validatePhone,
-                                        decoration: const InputDecoration(counterText: '', hintText: "Enter your phone number", border: InputBorder.none),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              TextFormField(
+                                controller: controller.phoneController,
+                                keyboardType: TextInputType.phone,
+                                maxLength: 10,
+                                validator: controller.validatePhone,
+                                decoration: const InputDecoration(counterText: '', hintText: "Enter your phone number", border: OutlineInputBorder(), prefixIcon: Icon(Icons.call)),
                               ),
 
-                              SizedBox(height: 30.h),
+                              SizedBox(height: 20.h),
 
                               Obx(
                                 () => SizedBox(
@@ -143,7 +125,7 @@ class LoginView extends StatelessWidget {
                         //     ),
                         //   ),
                         // ),
-                        SizedBox(height: 20.h),
+                        // SizedBox(height: 20.h),
                       ],
                     ),
                   ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:komutan/app/dashboard/notification/notification_controller.dart';
+import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_controller.dart';
 import 'package:komutan/app/dashboard/trip/trip_detail_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_model.dart';
@@ -10,26 +12,32 @@ class TripsScreen extends StatelessWidget {
   TripsScreen({super.key});
 
   final TripController controller = Get.put(TripController());
+  final NotificationController notificationController = Get.isRegistered<NotificationController>() ? Get.find<NotificationController>() : Get.put(NotificationController());
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        backgroundColor: AppColors.white,
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios, size: 18), onPressed: () {}),
         title: const Text('Trips'),
         actions: [
           Stack(
             children: [
-              IconButton(icon: const Icon(Icons.notifications_none, size: 26), onPressed: () {}),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                ),
+              IconButton(icon: const Icon(Icons.notifications_none, size: 26), onPressed: () => Get.to(() => const NotificationScreen())),
+              Obx(
+                () => notificationController.unreadCount.value > 0
+                    ? Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),

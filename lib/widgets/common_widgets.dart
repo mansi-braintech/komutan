@@ -74,7 +74,9 @@ class AddressRow extends StatelessWidget {
 }
 
 class NavigateCallButtons extends StatelessWidget {
-  const NavigateCallButtons({super.key});
+  final VoidCallback? onNavigate;
+  final VoidCallback? onCall;
+  const NavigateCallButtons({super.key, this.onNavigate, this.onCall});
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +84,7 @@ class NavigateCallButtons extends StatelessWidget {
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: onNavigate,
             icon: const Icon(Icons.navigation_outlined, size: 18),
             label: const Text('Navigate'),
             style: OutlinedButton.styleFrom(
@@ -96,7 +98,7 @@ class NavigateCallButtons extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: onCall,
             icon: const Icon(Icons.phone, size: 18),
             label: const Text('Call Customer'),
             style: ElevatedButton.styleFrom(

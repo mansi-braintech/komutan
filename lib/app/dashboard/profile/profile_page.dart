@@ -26,11 +26,11 @@ class ProfilePage extends StatelessWidget {
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary, letterSpacing: 0.3),
                   ),
                   const SizedBox(height: 10),
-                  _SettingsTile(icon: Icons.shield_outlined, title: 'License Number', subtitle: 'License: DL-1420160012345', onTap: () {}),
+                  Obx(() => _SettingsTile(icon: Icons.shield_outlined, title: 'License Number', subtitle: 'License: ${controller.licenseNumber}', onTap: () {})),
 
                   Divider(),
 
-                  _SettingsTile(icon: Icons.local_shipping_outlined, title: 'Vehicle Details', subtitle: 'Tata LPT 1613 • MH 12 AB 1234', onTap: () {}),
+                  Obx(() => _SettingsTile(icon: Icons.apartment_outlined, title: 'Company', subtitle: controller.companyName, onTap: () {})),
 
                   Divider(),
 
@@ -38,7 +38,7 @@ class ProfilePage extends StatelessWidget {
 
                   Divider(),
 
-                  _SettingsTile(icon: Icons.help_outline_rounded, title: 'Help & Support', subtitle: 'FAQs, contact support', onTap: () {}),
+                  _SettingsTile(icon: Icons.help_outline_rounded, title: 'Help & Support', subtitle: 'FAQs, contact support', onTap: controller.contactSupport),
                   const SizedBox(height: 16),
                   _LogoutButton(onTap: controller.logout),
                   const SizedBox(height: 16),
@@ -75,7 +75,7 @@ class _ProfileHeader extends StatelessWidget {
                 onTap: () {
                   // Profile is also shown as a bottom-nav tab (not a pushed
                   // route), so only pop if there's actually a route to pop.
-                  
+
                   if (Navigator.of(context).canPop()) Get.back();
                 },
                 child: Container(
@@ -119,15 +119,26 @@ class _ProfileHeader extends StatelessWidget {
           // Avatar + name
           Row(
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5, style: BorderStyle.solid),
+              GestureDetector(
+                onTap: controller.updateProfileImage,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5, style: BorderStyle.solid),
+                    image: controller.profileImageUrl != null ? DecorationImage(image: NetworkImage(controller.profileImageUrl!), fit: BoxFit.cover) : null,
+                  ),
+                  child: Obx(() {
+                    if (controller.isUploadingImage.value) {
+                      return const Center(
+                        child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white)),
+                      );
+                    }
+                    return controller.profileImageUrl == null ? const Icon(Icons.camera_alt_outlined, color: AppColors.white, size: 28) : const SizedBox.shrink();
+                  }),
                 ),
-                child: const Icon(Icons.camera_alt_outlined, color: AppColors.white, size: 28),
               ),
               const SizedBox(width: 16),
               Obx(
@@ -135,11 +146,11 @@ class _ProfileHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      controller.name.value,
+                      controller.name,
                       style: const TextStyle(color: AppColors.white, fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 0.2),
                     ),
                     const SizedBox(height: 3),
-                    Text(controller.email.value, style: TextStyle(color: Colors.white, fontSize: 13)),
+                    Text(controller.email, style: TextStyle(color: Colors.white, fontSize: 13)),
                   ],
                 ),
               ),
@@ -151,11 +162,9 @@ class _ProfileHeader extends StatelessWidget {
             () => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _InfoRow(icon: Icons.phone_outlined, text: controller.phone.value),
+                _InfoRow(icon: Icons.phone_outlined, text: controller.phone),
                 const SizedBox(height: 8),
-                _InfoRow(icon: Icons.credit_card_outlined, text: 'License: ${controller.licenseNumber.value}'),
-                const SizedBox(height: 8),
-                _InfoRow(icon: Icons.local_shipping_outlined, text: '${controller.vehicleType.value} • ${controller.vehicleNumber.value}'),
+                _InfoRow(icon: Icons.credit_card_outlined, text: 'License: ${controller.licenseNumber}'),
               ],
             ),
           ),

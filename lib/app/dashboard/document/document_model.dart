@@ -7,11 +7,9 @@ class DocumentModel {
   final String date;
   final DocumentType type;
 
-  const DocumentModel({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.date,
-    required this.type,
-  });
+  // API fields
+  final String source;
+  final String fileName;
+
+  const DocumentModel({required this.id, required this.title, required this.subtitle, required this.date, required this.type, required this.source, required this.fileName});
 }

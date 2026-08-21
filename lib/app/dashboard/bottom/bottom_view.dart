@@ -6,7 +6,7 @@ import 'package:komutan/utils/app_colors.dart';
 class NavBar extends StatelessWidget {
   NavBar({super.key});
 
-  final NavBarController controller = Get.put(NavBarController(), permanent: true);
+  final NavBarController controller = Get.put(NavBarController());
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +22,8 @@ class NavBar extends StatelessWidget {
           unselectedItemColor: const Color(0xFF7C8091),
           showUnselectedLabels: true,
           onTap: controller.changeIndex,
-          type: BottomNavigationBarType.fixed, // ✅ This prevents movement/scrolling
-          showSelectedLabels: true, // ✅ Ensure selected labels are shown
+          type: BottomNavigationBarType.fixed,
+          showSelectedLabels: true,
 
           items: List.generate(controller.labels.length, (index) {
             return BottomNavigationBarItem(
