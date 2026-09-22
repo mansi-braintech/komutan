@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:komutan/utils/app_colors.dart';
 
 import 'chat_controller.dart';
@@ -14,7 +17,7 @@ class ChatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Re-create the controller for this receiver every time the screen
     // opens, so switching between trips/customers never shows a stale
-    // thread or leaves an old polling timer running in the background.
+    // thread or leaves old socket listeners registered in the background.
     if (Get.isRegistered<ChatController>(tag: receiverId)) {
       Get.delete<ChatController>(tag: receiverId, force: true);
     }
@@ -26,6 +29,12 @@ class ChatScreen extends StatelessWidget {
       if (text.trim().isEmpty) return;
       controller.sendMessage(text);
       textController.clear();
+    }
+
+    Future<void> handlePickImage() async {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 75, maxWidth: 1600, maxHeight: 1600);
+      if (picked == null) return;
+      controller.sendImage(File(picked.path));
     }
 
     return Scaffold(
@@ -58,7 +67,7 @@ class ChatScreen extends StatelessWidget {
                       itemCount: controller.messages.length,
                       itemBuilder: (context, index) {
                         final message = controller.messages[index];
-                        final isMe = controller.currentUserId != null && controller.currentUserId!.isNotEmpty && message.senderId == controller.currentUserId;
+                        final isMe = message.isMine(controller.currentUserId);
                         return _ChatBubble(message: message, isMe: isMe);
                       },
                     );
@@ -71,6 +80,14 @@ class ChatScreen extends StatelessWidget {
                     decoration: const BoxDecoration(color: AppColors.white, border: Border(top: BorderSide(color: AppColors.divider))),
                     child: Row(
                       children: [
+                        Obx(
+                          () => IconButton(
+                            onPressed: controller.isSendingImage.value ? null : handlePickImage,
+                            icon: controller.isSendingImage.value
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.image_outlined, color: AppColors.textSecondary),
+                          ),
+                        ),
                         Expanded(
                           child: TextField(
                             controller: textController,
@@ -141,7 +158,29 @@ class _ChatBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message.text, style: TextStyle(color: isMe ? Colors.white : AppColors.textPrimary, fontSize: 14)),
+            if (message.hasImage) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  message.fullImageUrl!,
+                  width: 200,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const SizedBox(width: 200, height: 150, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 200,
+                    height: 150,
+                    color: AppColors.background,
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image_outlined, color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
+              if (message.text.isNotEmpty) const SizedBox(height: 6),
+            ],
+            if (message.text.isNotEmpty) Text(message.text, style: TextStyle(color: isMe ? Colors.white : AppColors.textPrimary, fontSize: 14)),
             if (message.createdAt != null) ...[
               const SizedBox(height: 4),
               Text(_formatTime(message.createdAt!), style: TextStyle(color: isMe ? Colors.white70 : AppColors.textSecondary, fontSize: 10)),

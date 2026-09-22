@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:komutan/app/dashboard/document/documents_page.dart';
 import 'package:komutan/app/dashboard/notification/notification_controller.dart';
 import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/app/dashboard/trip/trip_controller.dart';
@@ -265,11 +266,11 @@ class _CargoDetailsSection extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              if (trip.customerId.isEmpty) {
-                                Get.snackbar('Chat unavailable', 'No customer contact found for this trip', snackPosition: SnackPosition.TOP);
+                              if (trip.shipperId.isEmpty) {
+                                Get.snackbar('Chat unavailable', 'No shipper contact found for this trip', snackPosition: SnackPosition.TOP);
                                 return;
                               }
-                              Get.to(() => ChatScreen(receiverId: trip.customerId, receiverName: trip.customerName));
+                              Get.to(() => ChatScreen(receiverId: trip.shipperId, receiverName: trip.shipperName));
                             },
                             icon: const Icon(Icons.chat_bubble_outline, size: 18),
                             label: const Text('Chat'),
@@ -284,7 +285,13 @@ class _CargoDetailsSection extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              if (trip.id.isEmpty) {
+                                Get.snackbar('Documents unavailable', 'No shipment found for this trip', snackPosition: SnackPosition.TOP);
+                                return;
+                              }
+                              Get.to(() => DocumentsPage(shipmentId: trip.id));
+                            },
                             icon: const Icon(Icons.description_outlined, size: 18),
                             label: const Text('Documents'),
                             style: OutlinedButton.styleFrom(

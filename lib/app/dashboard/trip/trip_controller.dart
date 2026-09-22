@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:komutan/app/dashboard/trip/trip_model.dart';
 import 'package:komutan/data/services/ApiService.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TripController extends GetxController {
   final RxList<TripModel> trips = <TripModel>[].obs;
@@ -95,24 +96,46 @@ class TripController extends GetxController {
     }
   }
 
-  /// Fetches the pickup/delivery route for the selected trip
-  /// (`GET /driver/shipment/route`) and surfaces it to the driver.
+  /// "Navigate" on Trip Detail — opens the pickup → delivery route in the
+  /// native Google Maps app (falls back to the browser if Maps isn't
+  /// installed). Google Maps draws the driving route/polyline itself once
+  /// origin and destination are given, so no in-app map or API key call is
+  /// needed here. Works the same on Android and iOS via url_launcher.
   Future<void> fetchRoute() async {
     final trip = selectedTrip.value;
-    if (trip == null || trip.id.isEmpty) return;
-    try {
-      final response = await _api.getShipmentRoute(trip.id);
-      if (response.isOk && response.body?['success'] == true) {
-        final data = response.body['data'] ?? {};
-        final pickup = (data['pickup']?['address'] ?? '').toString();
-        final delivery = (data['delivery']?['address'] ?? '').toString();
-        print(response.body);
-        Get.snackbar('Route', 'Pickup: $pickup\nDelivery: $delivery', snackPosition: SnackPosition.TOP, duration: const Duration(seconds: 4));
-      } else {
-        Get.snackbar('Error', response.body?['message'] ?? 'Failed to load route', snackPosition: SnackPosition.TOP);
+    if (trip == null) return;
+
+    String pickupAddress = trip.pickupAddress;
+    String deliveryAddress = trip.deliveryAddress;
+
+    // Best-effort: refresh with the latest addresses from the backend
+    // (`GET /driver/shipment/route`) before opening Maps.
+    if (trip.id.isNotEmpty) {
+      try {
+        final response = await _api.getShipmentRoute(trip.id);
+        if (response.isOk && response.body?['success'] == true) {
+          final data = response.body['data'] ?? {};
+          final pickup = (data['pickup']?['address'] ?? '').toString();
+          final delivery = (data['delivery']?['address'] ?? '').toString();
+          if (pickup.isNotEmpty) pickupAddress = pickup;
+          if (delivery.isNotEmpty) deliveryAddress = delivery;
+        }
+      } catch (_) {
+        // Non-fatal — fall back to the trip's own address fields.
       }
-    } catch (e) {
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+    }
+
+    if (pickupAddress.isEmpty || deliveryAddress.isEmpty) {
+      Get.snackbar('Route unavailable', 'Pickup or delivery address is missing for this trip', snackPosition: SnackPosition.TOP);
+      return;
+    }
+
+    final uri = Uri.https('www.google.com', '/maps/dir/', {'api': '1', 'origin': pickupAddress, 'destination': deliveryAddress, 'travelmode': 'driving'});
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      Get.snackbar('Error', 'Could not open Google Maps', snackPosition: SnackPosition.TOP);
     }
   }
 
@@ -121,23 +144,39 @@ class TripController extends GetxController {
   Future<void> fetchContact() async {
     final trip = selectedTrip.value;
     if (trip == null || trip.id.isEmpty) return;
+
     try {
       final response = await _api.getContact(trip.id);
+
       if (response.isOk && response.body?['success'] == true) {
         final contact = (response.body['data']?['contact'] as Map<String, dynamic>?) ?? {};
+
         customerContact.value = contact;
-        Get.defaultDialog(
-          title: (contact['fullName'] ?? 'Customer Contact').toString(),
-          middleText: '${contact['countryCode'] ?? ''} ${contact['phoneNumber'] ?? ''}\n${contact['email'] ?? ''}'.trim(),
-          textConfirm: 'Close',
-          onConfirm: () => Get.back(),
-        );
+
+        final countryCode = (contact['countryCode'] ?? '').toString();
+        final phoneNumber = (contact['phoneNumber'] ?? '').toString();
+
+        final phone = '$countryCode$phoneNumber';
+
+        if (phoneNumber.isNotEmpty) {
+          final Uri phoneUri = Uri(scheme: 'tel', path: phone);
+
+          if (await canLaunchUrl(phoneUri)) {
+            await launchUrl(phoneUri);
+          } else {
+            Get.snackbar('Error', 'Could not open phone dialer', snackPosition: SnackPosition.TOP);
+          }
+        } else {
+          Get.snackbar('Error', 'Customer phone number not available', snackPosition: SnackPosition.TOP);
+        }
+
         print(response.body);
       } else {
         Get.snackbar('Error', response.body?['message'] ?? 'Failed to load contact', snackPosition: SnackPosition.TOP);
       }
     } catch (e) {
       Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
+      print(e.toString());
     }
   }
 
@@ -293,32 +332,54 @@ class TripController extends GetxController {
     isSubmittingPOD.value = true;
 
     try {
-      // --------------------------------------------------
+      // ============================================================
       // 1. Upload customer signature
-      // --------------------------------------------------
-      final signatureFile = File(signaturePath.value!);
+      // ============================================================
 
-      if (!await signatureFile.exists()) {
-        Get.snackbar('Error', 'Signature file could not be found.', snackPosition: SnackPosition.TOP);
+      final signatureResponse = await _api.uploadSignature(shipmentId: trip.id, image: signaturePath.value!);
+
+      print('Signature response: ${signatureResponse.body}');
+
+      if (!(signatureResponse.isOk && signatureResponse.body?['success'] == true)) {
+        Get.snackbar('Error', signatureResponse.body?['message'] ?? 'Failed to upload signature', snackPosition: SnackPosition.TOP);
         return false;
       }
 
-      final signatureBytes = await signatureFile.readAsBytes();
-      final signatureBase64 = base64Encode(signatureBytes);
+      // ============================================================
+      // 2. Upload POD images
+      // ============================================================
 
-      final sigResponse = await _api.uploadSignature(shipmentId: trip.id, image: signaturePath.value!);
+      final imageUrls = <String>[];
 
-      print('Signature response: ${sigResponse.body}');
+      for (final imagePath in deliveryPhotos) {
+        try {
+          final imageUrl = await _api.uploadPODImage(shipmentId: trip.id, imagePath: imagePath);
 
-      if (!(sigResponse.isOk && sigResponse.body?['success'] == true)) {
-        Get.snackbar('Error', sigResponse.body?['message'] ?? 'Failed to upload signature', snackPosition: SnackPosition.TOP);
+          if (imageUrl != null && imageUrl.isNotEmpty) {
+            imageUrls.add(imageUrl);
+          }
+        } catch (e) {
+          print('Failed to upload POD image: $e');
+
+          Get.snackbar('Error', 'Failed to upload one of the delivery images.', snackPosition: SnackPosition.TOP);
+
+          return false;
+        }
+      }
+
+      print('Uploaded POD image URLs: $imageUrls');
+
+      // Make sure all images were uploaded
+      if (imageUrls.isEmpty) {
+        Get.snackbar('Error', 'No POD images were uploaded.', snackPosition: SnackPosition.TOP);
         return false;
       }
 
-      // --------------------------------------------------
-      // 2. Upload POD photos as multipart/form-data
-      // --------------------------------------------------
-      final podResponse = await _api.createPOD(shipmentId: trip.id, imagePaths: deliveryPhotos.toList());
+      // ============================================================
+      // 3. Create POD with image URLs
+      // ============================================================
+      print(trip.id);
+      final podResponse = await _api.createPOD(shipmentId: trip.id, imageUrls: imageUrls);
 
       print('POD response: ${podResponse.body}');
 

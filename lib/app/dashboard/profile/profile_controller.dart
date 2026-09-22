@@ -9,6 +9,7 @@ import 'package:komutan/app/dashboard/trip/trip_controller.dart';
 import 'package:komutan/data/models/auth_response.dart';
 import 'package:komutan/data/services/ApiService.dart';
 import 'package:komutan/data/services/auth_service.dart';
+import 'package:komutan/data/services/socket_service.dart';
 import 'package:komutan/routes/routes.dart';
 import 'package:komutan/utils/app_colors.dart';
 
@@ -141,6 +142,7 @@ class ProfileController extends GetxController {
           TextButton(
             onPressed: () async {
               await _auth.logout();
+              Get.find<SocketService>().disconnect();
               // Force-remove the dashboard/trip/nav controllers so the next
               // login starts clean: fresh dashboard data and the Home tab
               // selected, instead of whatever was cached from this session.

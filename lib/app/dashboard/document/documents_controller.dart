@@ -1,11 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:komutan/app/dashboard/document/document_model.dart';
 import 'package:komutan/data/services/ApiService.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 class DocumentsController extends GetxController {
   final ApiService apiService = Get.find<ApiService>();
+
+  final String? shipmentId;
+
+  DocumentsController({this.shipmentId});
 
   final RxList<DocumentModel> documents = <DocumentModel>[].obs;
 
@@ -22,7 +30,7 @@ class DocumentsController extends GetxController {
     try {
       isLoading.value = true;
 
-      final response = await apiService.getMyDocuments();
+      final response = await apiService.getMyDocuments(shipmentId: shipmentId);
 
       debugPrint('Documents API status: ${response.statusCode}');
       debugPrint('Documents API body: ${response.body}');
@@ -174,9 +182,42 @@ class DocumentsController extends GetxController {
         return;
       }
 
-      await apiService.downloadDocument(source: doc.source, id: doc.id, fileName: doc.fileName);
+      final response = await apiService.downloadDocument(source: doc.source, id: doc.id, fileName: doc.fileName);
 
-      Get.snackbar('Success', '${doc.title} downloaded successfully', snackPosition: SnackPosition.TOP);
+      if (!response.isOk) {
+        Get.snackbar('Download Failed', response.statusText ?? 'Unable to download ${doc.title}', snackPosition: SnackPosition.TOP);
+        return;
+      }
+
+      // `bodyBytes` is a raw Stream<List<int>> (not a plain byte list), so
+      // it has to be drained into an actual List<int> before it can be
+      // written to disk.
+      final bytes = await _collectBytes(response.bodyBytes);
+
+      if (bytes.isEmpty) {
+        Get.snackbar('Download Failed', 'Received an empty file for ${doc.title}', snackPosition: SnackPosition.TOP);
+        return;
+      }
+
+      final savedFile = await _saveToDevice(bytes: bytes, fileName: doc.fileName);
+
+      Get.snackbar(
+        'Downloaded',
+        '${doc.title} saved to your phone',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 4),
+        mainButton: TextButton(
+          onPressed: () => OpenFilex.open(savedFile.path),
+          child: const Text(
+            'OPEN',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+      );
+
+      // Open it right away too, the way delivery apps preview an
+      // invoice/receipt the moment it finishes downloading.
+      await OpenFilex.open(savedFile.path);
     } catch (e) {
       debugPrint('downloadDocument error: $e');
 
@@ -184,5 +225,49 @@ class DocumentsController extends GetxController {
     } finally {
       isDownloading.value = false;
     }
+  }
+
+  /// Drains the raw response stream into a single byte list. Returns an
+  /// empty list if there's no stream to read (e.g. an empty body).
+  Future<List<int>> _collectBytes(Stream<List<int>>? stream) async {
+    if (stream == null) return <int>[];
+
+    final bytes = <int>[];
+
+    await for (final chunk in stream) {
+      bytes.addAll(chunk);
+    }
+
+    return bytes;
+  }
+
+  /// Writes the downloaded bytes to a real file on the device so there's an
+  /// actual document the user can reopen or share later, not just an API
+  /// call that goes nowhere.
+  Future<File> _saveToDevice({required List<int> bytes, required String fileName}) async {
+    late final Directory baseDir;
+
+    if (Platform.isAndroid) {
+      // App-specific external storage: a real folder on the device's
+      // storage that needs no runtime permission, visible via any file
+      // manager under Android/data/<package>/files/Documents.
+      baseDir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+    } else {
+      // iOS: the app's Documents directory, visible in the Files app
+      // under "On My iPhone" when file sharing is enabled for the app.
+      baseDir = await getApplicationDocumentsDirectory();
+    }
+
+    final docsDir = Directory('${baseDir.path}/Documents');
+
+    if (!await docsDir.exists()) {
+      await docsDir.create(recursive: true);
+    }
+
+    final safeName = fileName.trim().isEmpty ? 'document_${DateTime.now().millisecondsSinceEpoch}' : fileName;
+
+    final file = File('${docsDir.path}/$safeName');
+
+    return file.writeAsBytes(bytes, flush: true);
   }
 }

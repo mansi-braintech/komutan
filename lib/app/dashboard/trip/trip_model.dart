@@ -16,7 +16,9 @@ class TripModel {
   final String rawStatus; // raw backend status string (e.g. "pickup_done")
   final String tripNo;
   final String customerName;
-  final String customerId; // createdBy `_id`, used as the chat `receiver`
+  final String customerId; // createdBy `_id` — the person who placed the order; shown as "Customer" in trip detail/POD screens only
+  final String shipperName;
+  final String shipperId; // assignedCompany `_id` — the actual chat counterpart (driver <-> shipper, not driver <-> customer)
   final String date;
   final String pickupCity;
   final String pickupAddress;
@@ -35,6 +37,8 @@ class TripModel {
     required this.tripNo,
     required this.customerName,
     this.customerId = '',
+    this.shipperName = '',
+    this.shipperId = '',
     required this.date,
     required this.pickupCity,
     required this.pickupAddress,
@@ -52,6 +56,7 @@ class TripModel {
     final pickup = json['pickup'] as Map<String, dynamic>? ?? {};
     final delivery = json['delivery'] as Map<String, dynamic>? ?? {};
     final createdBy = json['createdBy'] as Map<String, dynamic>? ?? {};
+    final assignedCompany = json['assignedCompany'] as Map<String, dynamic>? ?? {};
 
     final status = _statusFromString(json['status']?.toString());
 
@@ -61,6 +66,8 @@ class TripModel {
       tripNo: (json['orderId'] ?? json['_id'] ?? '').toString(),
       customerName: (createdBy['fullName'] ?? '').toString(),
       customerId: (createdBy['_id'] ?? '').toString(),
+      shipperName: (assignedCompany['companyName'] ?? assignedCompany['fullName'] ?? '').toString(),
+      shipperId: (assignedCompany['_id'] ?? '').toString(),
       date: _formatDate(pickup['date']?.toString()),
       pickupCity: (pickup['city'] ?? '').toString(),
       pickupAddress: _formatAddress(pickup),

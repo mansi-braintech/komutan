@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/app/dashboard/profile/profile_controller.dart';
 import 'package:komutan/utils/app_colors.dart';
 
@@ -81,8 +82,8 @@ class _ProfileHeader extends StatelessWidget {
                 child: Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(color: Color(0xFFECF0F4), borderRadius: BorderRadius.circular(30)),
-                  child: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppColors.black),
+                  // decoration: BoxDecoration(color: Color(0xFFECF0F4), borderRadius: BorderRadius.circular(30)),
+                  // child: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppColors.black),
                 ),
               ),
               const Text(
@@ -92,11 +93,14 @@ class _ProfileHeader extends StatelessWidget {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(30)),
-                    child: const Icon(Icons.notifications_none_rounded, color: AppColors.white, size: 20),
+                  GestureDetector(
+                    onTap: () => Get.to(() => const NotificationScreen()),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(30)),
+                      child: const Icon(Icons.notifications_none_rounded, color: AppColors.white, size: 20),
+                    ),
                   ),
                   Positioned(
                     top: 5,

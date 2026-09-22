@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:komutan/data/services/ApiService.dart';
 import 'package:komutan/data/services/auth_service.dart';
+import 'package:komutan/data/services/socket_service.dart';
 import 'package:komutan/routes/app_pages.dart';
 import 'package:komutan/routes/routes.dart';
 
@@ -13,6 +14,7 @@ Future<void> main() async {
   await GetStorage.init();
   Get.put(ApiService(), permanent: true);
   Get.put(AuthService(), permanent: true);
+  Get.put(SocketService(), permanent: true);
   runApp(const MyApp());
 }
 

@@ -7,9 +7,11 @@ import 'package:komutan/app/dashboard/notification/notification_screen.dart';
 import 'package:komutan/utils/app_colors.dart';
 
 class DocumentsPage extends StatelessWidget {
-  DocumentsPage({super.key});
+  final String? shipmentId;
 
-  final DocumentsController controller = Get.put(DocumentsController());
+  DocumentsPage({super.key, this.shipmentId});
+
+  late final DocumentsController controller = Get.put(DocumentsController(shipmentId: shipmentId), tag: shipmentId);
   final NotificationController notificationController = Get.isRegistered<NotificationController>() ? Get.find<NotificationController>() : Get.put(NotificationController());
 
   @override
@@ -18,20 +20,22 @@ class DocumentsPage extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.white,
-        leading: IconButton(
-          icon: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppColors.textPrimary),
-          ),
-          onPressed: () {
-            // Documents is also shown as a bottom-nav tab (not a pushed
-            // route), so only pop if there's actually a route to pop.
-            if (Navigator.of(context).canPop()) Get.back();
-          },
-        ),
-        title: const Text('Documents'),
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 16, color: AppColors.textPrimary),
+                ),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Get.back();
+                  }
+                },
+              )
+            : null,
+        title: Center(child: const Text('Documents')),
         centerTitle: false,
         actions: [
           Padding(

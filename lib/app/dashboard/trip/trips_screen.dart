@@ -20,7 +20,12 @@ class TripsScreen extends StatelessWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.white,
-        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, size: 18), onPressed: () {}),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back_ios, size: 18),
+        //   onPressed: () {
+        //     Get.offAllNamed(Routes.bottom);
+        //   },
+        // ),
         title: const Text('Trips'),
         actions: [
           Stack(

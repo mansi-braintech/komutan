@@ -7,7 +7,8 @@ import 'auth_service.dart';
 class ApiService extends GetConnect {
   @override
   void onInit() {
-    httpClient.baseUrl = 'http://192.168.0.141:5200';
+    // httpClient.baseUrl = 'http://192.168.0.170:5300';
+    httpClient.baseUrl = 'https://komutanapi.etrueconcept.com';
     httpClient.timeout = const Duration(seconds: 20);
 
     httpClient.addRequestModifier<dynamic>((request) {
@@ -91,6 +92,8 @@ class ApiService extends GetConnect {
 
   // ---- Proof of Delivery ----
 
+  // ---- Proof of Delivery ----
+
   Future<Response> uploadSignature({required String shipmentId, required String image}) async {
     final file = File(image);
 
@@ -99,7 +102,6 @@ class ApiService extends GetConnect {
     }
 
     final fileName = file.path.split(Platform.pathSeparator).last;
-
     final fileSize = await file.length();
 
     print(
@@ -112,63 +114,38 @@ class ApiService extends GetConnect {
     return post('/api/v1/driver/signature/upload', formData, contentType: 'multipart/form-data');
   }
 
-  Future<Response> getSignatures({required String shipmentId}) {
-    return get('/api/v1/driver/signature/view?shipmentId=$shipmentId');
-  }
+  // Upload POD image and return uploaded image URL
+  Future<String?> uploadPODImage({required String shipmentId, required String imagePath}) async {
+    final file = File(imagePath);
 
-  Future<Response> createPOD({required String shipmentId, required List<String> imagePaths}) async {
-    final formData = FormData({'shipmentId': shipmentId});
-
-    for (final path in imagePaths) {
-      final file = File(path);
-
-      if (!await file.exists()) {
-        throw Exception('POD image file not found: $path');
-      }
-
-      final fileName = file.path.split(Platform.pathSeparator).last;
-
-      final fileSize = await file.length();
-            
-      print(
-        'POD image: $fileName '
-        '(${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)',
-      );
-
-      final extension = fileName.split('.').last.toLowerCase();
-
-      String? mimeType;
-
-      switch (extension) {
-        case 'jpg':
-        case 'jpeg':
-          mimeType = 'image/jpeg';
-          break;
-
-        case 'png':
-          mimeType = 'image/png';
-          break;
-
-        case 'webp':
-          mimeType = 'image/webp';
-          break;
-
-        case 'gif':
-          mimeType = 'image/gif';
-          break;
-
-        case 'avif':
-          mimeType = 'image/avif';
-          break;
-
-        default:
-          throw Exception('Unsupported image type: .$extension');
-      }
-
-      formData.files.add(MapEntry('images', MultipartFile(file, filename: fileName, contentType: mimeType)));
+    if (!await file.exists()) {
+      throw Exception('POD image not found: $imagePath');
     }
 
-    return post('/api/v1/driver/pod/create', formData, contentType: 'multipart/form-data');
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    final fileSize = await file.length();
+
+    print(
+      'Uploading POD image: $fileName '
+      '(${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)',
+    );
+
+    final formData = FormData({'shipmentId': shipmentId, 'image': MultipartFile(file, filename: fileName)});
+
+    final response = await post('/api/v1/driver/signature/upload', formData, contentType: 'multipart/form-data');
+
+    print('POD image upload response: ${response.body}');
+
+    if (response.isOk && response.body?['success'] == true) {
+      return response.body?['data']?['image']?.toString();
+    }
+
+    throw Exception(response.body?['message'] ?? 'Failed to upload POD image');
+  }
+
+  // Create POD using uploaded image URLs
+  Future<Response> createPOD({required String shipmentId, required List<String> imageUrls}) {
+    return post('/api/v1/driver/pod/create', {'shipmentId': shipmentId, 'images': imageUrls});
   }
 
   Future<Response> getPOD(String id) {
@@ -212,16 +189,24 @@ class ApiService extends GetConnect {
 
   // ---- Documents ----
 
-  Future<Response> getMyDocuments() {
+  Future<Response> getMyDocuments({String? shipmentId}) {
+    if (shipmentId != null && shipmentId.isNotEmpty) {
+      return get('/api/v1/driver/get-my-document?shipmentId=${Uri.encodeQueryComponent(shipmentId)}');
+    }
     return get('/api/v1/driver/get-my-document');
   }
 
+  /// Fetches the raw file bytes for a document. `decoder` is set to hand
+  /// back the raw response instead of trying to JSON-decode a binary
+  /// PDF/image body, and `response.bodyBytes` on the result is what should
+  /// be written to disk.
   Future<Response> downloadDocument({required String source, required String id, required String fileName}) {
     return get(
       '/api/v1/driver/download-document'
       '?source=${Uri.encodeQueryComponent(source)}'
       '&id=${Uri.encodeQueryComponent(id)}'
       '&filename=${Uri.encodeQueryComponent(fileName)}',
+      decoder: (data) => data,
     );
   }
 }
