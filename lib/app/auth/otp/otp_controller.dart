@@ -4,6 +4,7 @@ import 'package:komutan/data/services/ApiService.dart';
 
 import '../../../data/models/auth_response.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/socket_service.dart';
 import '../../../routes/routes.dart';
 
 class OtpController extends GetxController {
@@ -62,6 +63,7 @@ class OtpController extends GetxController {
         final data = VerifyOtpResponse.fromJson(response.body);
         print(response.body);
         await _auth.saveSession(data);
+        Get.find<SocketService>().connect();
 
         Get.offAllNamed(Routes.bottom);
       } else {
