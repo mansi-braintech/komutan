@@ -4,6 +4,7 @@ import 'package:komutan/data/services/ApiService.dart';
 
 import '../../../data/models/auth_response.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/push_service.dart';
 import '../../../data/services/socket_service.dart';
 import '../../../routes/routes.dart';
 
@@ -64,6 +65,7 @@ class OtpController extends GetxController {
         print(response.body);
         await _auth.saveSession(data);
         Get.find<SocketService>().connect();
+        PushService.registerToken(); // send FCM token to backend (not awaited)
 
         Get.offAllNamed(Routes.bottom);
       } else {
@@ -102,9 +104,12 @@ class OtpController extends GetxController {
         final data = SendOtpResponse.fromJson(response.body);
         print(response.body);
         _driverRefId = data.userId; // /send issues a fresh id each time
+
         Get.snackbar('OTP Sent', response.body['message'] ?? 'A new OTP has been sent to your phone', snackPosition: SnackPosition.TOP);
+        print(response.body);
       } else {
         Get.snackbar('Error', response.body?['message'] ?? 'Failed to resend OTP', snackPosition: SnackPosition.TOP);
+        print(response.body);
       }
     } catch (e) {
       Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);

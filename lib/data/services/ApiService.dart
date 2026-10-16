@@ -187,6 +187,19 @@ class ApiService extends GetConnect {
     return post('/api/v1/driver/notification/isRead', {"ids": ids});
   }
 
+  // ---- Push (FCM) token ----
+
+  /// Saves this device's FCM token for the logged-in driver. Call after login.
+  Future<Response> saveFcmToken(String fcmToken) {
+    return post('/api/v1/driver/notification/token', {"fcmToken": fcmToken});
+  }
+
+  /// Removes this device's FCM token. Call on logout, BEFORE the JWT is cleared.
+  /// GetConnect.delete() cannot send a body, so request() is used instead.
+  Future<Response> removeFcmToken(String fcmToken) {
+    return request('/api/v1/driver/notification/token/remove', 'DELETE', body: {"fcmToken": fcmToken});
+  }
+
   // ---- Documents ----
 
   Future<Response> getMyDocuments({String? shipmentId}) {

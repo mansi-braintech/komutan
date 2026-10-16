@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "126066050255",
+    "project_id": "komutan-fb984",
+    "storage_bucket": "komutan-fb984.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:126066050255:android:d739c6977e3d061836a3ba",
+        "android_client_info": {
+          "package_name": "com.example.komutan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTccaBI6_6CHw9O14L3uMtYCy2hfeW1OE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

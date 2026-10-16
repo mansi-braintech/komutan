@@ -39,6 +39,7 @@ class LoginController extends GetxController {
         Get.toNamed(Routes.otp, arguments: {"id": data.userId, "phone": phone});
       } else {
         Get.snackbar("Error", response.body?['message'] ?? 'Failed to send OTP', snackPosition: SnackPosition.TOP);
+        print(response.body);
       }
     } catch (e) {
       Get.snackbar("Error", e.toString(), snackPosition: SnackPosition.TOP);

@@ -27,6 +27,7 @@ class NotificationController extends GetxController {
         final list = (data['getData'] as List?) ?? [];
         notifications.assignAll(list.map((e) => AppNotification.fromJson(e as Map<String, dynamic>)));
         unreadCount.value = (data['unreadCount'] as num?)?.toInt() ?? notifications.where((n) => !n.isRead).length;
+        print(response.body);
       } else if (!silent) {
         Get.snackbar('Error', response.body?['message'] ?? 'Failed to load notifications', snackPosition: SnackPosition.TOP);
       }
