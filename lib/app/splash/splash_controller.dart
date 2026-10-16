@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:komutan/data/services/auth_service.dart';
+import 'package:komutan/data/services/push_service.dart';
 import 'package:komutan/data/services/socket_service.dart';
 import 'package:komutan/routes/routes.dart';
 
@@ -16,5 +17,7 @@ class SplashController extends GetxController {
     final auth = Get.find<AuthService>();
     if (auth.isLoggedIn) Get.find<SocketService>().connect();
     Get.offAllNamed(auth.isLoggedIn ? Routes.bottom : Routes.login);
+    // If the app was opened by tapping a notification, open it now.
+    if (auth.isLoggedIn) Future.delayed(const Duration(milliseconds: 500), PushService.handlePendingTap);
   }
 }

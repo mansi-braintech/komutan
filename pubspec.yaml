@@ -47,6 +47,9 @@ dependencies:
   url_launcher: ^6.3.2
   google_maps_flutter: ^2.14.2
   open_filex: ^4.7.0
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  flutter_local_notifications: ^20.1.0
 
 dev_dependencies:
   flutter_test:

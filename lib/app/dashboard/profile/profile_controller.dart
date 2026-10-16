@@ -9,6 +9,7 @@ import 'package:komutan/app/dashboard/trip/trip_controller.dart';
 import 'package:komutan/data/models/auth_response.dart';
 import 'package:komutan/data/services/ApiService.dart';
 import 'package:komutan/data/services/auth_service.dart';
+import 'package:komutan/data/services/push_service.dart';
 import 'package:komutan/data/services/socket_service.dart';
 import 'package:komutan/routes/routes.dart';
 import 'package:komutan/utils/app_colors.dart';
@@ -59,14 +60,14 @@ class ProfileController extends GetxController {
       Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.TOP);
     } finally {
       isLoading.value = false;
-    }                                                                                             
+    }
   }
 
   Future<void> updateProfileImage() async {
     final picker = ImagePicker();
 
     final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 75, maxWidth: 1200, maxHeight: 1200);
- 
+
     if (picked == null) return;
 
     final imageFile = File(picked.path);
@@ -141,6 +142,8 @@ class ProfileController extends GetxController {
           ),
           TextButton(
             onPressed: () async {
+              // Must run before _auth.logout(): the remove-token call needs the JWT.
+              await PushService.unregisterToken();
               await _auth.logout();
               Get.find<SocketService>().disconnect();
               // Force-remove the dashboard/trip/nav controllers so the next
